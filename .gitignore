@@ -1,0 +1,59 @@
+# --- Frontend (React / Node) ---
+node_modules/
+dist/
+build/
+.eslintcache
+.stylelintcache
+*.local
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# --- Backend (FastAPI / Python) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Environment Variables (Crucial) ---
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# --- Operating System ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE/Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
