@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // for redirection
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -40,6 +41,14 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState('Mar 05, 2026 - Apr 04, 2026');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const labels = Array.from({ length: 31 }, (_, i) => `Mar ${5 + i < 10 ? '0' + (5 + i) : 5 + i}`);
 
@@ -141,19 +150,19 @@ const Dashboard = () => {
 
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-8 transition-all duration-500">
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm transition-all duration-500">
-  <h1 className="text-3xl md:text-4xl font-extrabold mb-2 text-gray-800 transition-colors duration-300">
-    Date Range Filter
-  </h1>
-  <p className="text-sm mb-4 text-gray-500 transition-all duration-300">
-    Select date range to retrieve and analyze posts
-  </p>
-  <input
-    type="text"
-    value={dateRange}
-    onChange={(e) => setDateRange(e.target.value)}
-    className="w-full max-w-xl px-4 py-3 rounded-xl text-gray-800 bg-gray-50 cursor-text focus:outline-none transition-all duration-500"
-  />
-</div>
+          <h1 className="text-3xl md:text-4xl font-extrabold mb-2 text-gray-800 transition-colors duration-300">
+            Date Range Filter
+          </h1>
+          <p className="text-sm mb-4 text-gray-500 transition-all duration-300">
+            Select date range to retrieve and analyze posts
+          </p>
+          <input
+            type="text"
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="w-full max-w-xl px-4 py-3 rounded-xl text-gray-800 bg-gray-50 cursor-text focus:outline-none transition-all duration-500"
+          />
+        </div>
 
         <div className="transition-all duration-500">
           <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />

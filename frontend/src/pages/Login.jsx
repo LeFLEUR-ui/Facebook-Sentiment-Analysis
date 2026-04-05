@@ -1,18 +1,44 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Logging in with:", { email, password });
+    setError("");
+
+    try {
+      const response = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.detail || "Login failed");
+        return;
+      }
+
+      localStorage.setItem("access_token", data.access_token);
+
+      navigate("/");
+    } catch (err) {
+      setError("Server error, please try again later.");
+      console.error(err);
+    }
   };
 
   return (
     <div className="bg-[#eef2ff] flex items-center justify-center min-h-screen font-sans p-4">
       <div className="bg-white p-10 rounded-xl shadow-sm w-full max-w-[440px]">
-        
         <div className="flex flex-col items-center mb-8">
           <div className="bg-[#5d5cf5] p-3 rounded-xl mb-6 shadow-lg shadow-indigo-100">
             <svg
@@ -37,6 +63,8 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email
