@@ -1,79 +1,39 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession  # ✅ CORRECT
 
-from app import auth, database, schemas
-from app.services import user_service
-
-router = APIRouter(prefix="/users", tags=["users"])
+from app.auth import create_access_token
+from app.database import AsyncSessionLocal, get_db
+from app.schemas.schemas import UserCreate, UserLogin, UserResponse
+from app.services.user_service import authenticate_user, create_user, get_user_by_email
 
 
-def get_db():
-    db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post("/register", response_model=schemas.Token)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    """
-    Register a new user.
-    Returns JWT token on success.
-    """
-    try:
-        return user_service.register_user(user, db)
-    except HTTPException as e:
-        raise e
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error occurred during registration."
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred."
-        )
+@router.post("/register", response_model=UserResponse)
+async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    existing_user = await get_user_by_email(db, user.email)
+
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    new_user = await create_user(db, user.email, user.password)
+    return new_user
 
 
-@router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """
-    Login with email and password.
-    Returns JWT token on success.
-    """
-    try:
-        return user_service.authenticate_user(form_data.username, form_data.password, db)
-    except HTTPException as e:
-        raise e
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error occurred during login."
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred."
-        )
+@router.post("/login")
+async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
+    db_user = await authenticate_user(db, user.email, user.password)
 
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-@router.get("/me", summary="Get current logged-in user")
-def me(token: str = Depends(auth.oauth2_scheme)):
-    """
-    Get info about the currently authenticated user using JWT token.
-    """
-    try:
-        return user_service.get_current_user(token)
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve user information."
-        )
+    token = create_access_token({
+        "sub": db_user.email,
+        "user_id": db_user.id
+    })
+
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
