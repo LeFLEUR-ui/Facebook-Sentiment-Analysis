@@ -14,9 +14,7 @@ const Login = () => {
     try {
       const response = await fetch("http://localhost:8000/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
@@ -28,6 +26,7 @@ const Login = () => {
       }
 
       localStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("user_email", email);
 
       navigate("/");
     } catch (err) {
