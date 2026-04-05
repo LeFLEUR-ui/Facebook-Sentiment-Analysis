@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LogOut, Bell, Search, Menu, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Header = ({ searchTerm, setSearchTerm }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const notificationsRef = useRef(null);
+  const navigate = useNavigate();
 
   const notifications = [
     { id: 1, title: "New comment on your post", time: "2 mins ago" },
@@ -27,6 +30,17 @@ const Header = ({ searchTerm, setSearchTerm }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const email = localStorage.getItem("user_email");
+    if (email) setUserEmail(email);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user_email");
+    navigate("/login");
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm border-b border-gray-200 px-4 md:px-6 py-3 flex justify-between items-center">
 
@@ -35,7 +49,7 @@ const Header = ({ searchTerm, setSearchTerm }) => {
           Facebook Sentiment <span className="text-indigo-600">Analysis</span>
         </h1>
         <span className="hidden md:inline text-xs text-gray-500 uppercase tracking-wide">
-          Welcome back, Ms. Sophia Nicole
+          Welcome back, {userEmail || "User"}
         </span>
       </div>
 
@@ -83,7 +97,10 @@ const Header = ({ searchTerm, setSearchTerm }) => {
           )}
         </div>
 
-        <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition"
+        >
           <LogOut size={16} className="text-gray-400" />
         </button>
       </div>
@@ -138,7 +155,10 @@ const Header = ({ searchTerm, setSearchTerm }) => {
             </div>
           )}
 
-          <button className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-xl transition w-full">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-xl transition w-full"
+          >
             <LogOut size={16} className="text-gray-400 flex-shrink-0" />
             <span>Logout</span>
           </button>
