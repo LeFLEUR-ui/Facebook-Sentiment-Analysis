@@ -5,6 +5,7 @@ from sqlalchemy.future import select
 from app.database import get_db, init_db
 from app.models.models import User
 from app.controllers.user_controller import router as user_router
+from app.controllers.sentiment_model_controller import router as sentiment_router
 from fastapi.middleware.cors import CORSMiddleware
 
 origins = [
@@ -26,6 +27,7 @@ async def startup_event():
     await init_db()
 
 app.include_router(user_router)
+app.include_router(sentiment_router)
 
 @app.get("/users")
 async def read_users(db: AsyncSession = Depends(get_db)):
