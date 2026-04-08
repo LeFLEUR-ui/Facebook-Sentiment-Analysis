@@ -5,14 +5,17 @@ from sqlalchemy.future import select
 from app.database import get_db, init_db
 from app.models.models import User
 from app.controllers.user_controller import router as user_router
+from app.controllers.post_controller import router as post_router
+from app.controllers.report_controller import router as report_router
 from app.controllers.sentiment_model_controller import router as sentiment_router
+from app.controllers.analytics_controller import router as analytics_router
 from fastapi.middleware.cors import CORSMiddleware
 
 origins = [
     "*",
 ]
 
-app = FastAPI()
+app = FastAPI(title="SMART GENERATIONS PH - FACEBOOK SENTIMENT ANALYSIS")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,15 +25,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup_event():
-    await init_db()
-
+# endpoint registration fo
 app.include_router(user_router)
 app.include_router(sentiment_router)
+app.include_router(report_router)
+app.include_router(post_router)
+app.include_router(analytics_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db() # kelangan to ensure ung database creation tsaka auto reload ng mga eme
 
 @app.get("/users")
 async def read_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
     users = result.scalars().all()
     return users
+
+
+# And I'll always love you
+# Deep inside this heart of mine
+# I do love you
+# And I'll always need you
+# And if you ever
+# Change your mind, I'll still
+# I will love you 🎶
