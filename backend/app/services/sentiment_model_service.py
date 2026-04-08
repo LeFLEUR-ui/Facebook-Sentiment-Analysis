@@ -1,6 +1,7 @@
 import os
 import re
 import numpy as np
+from sqlalchemy import func, select
 import tensorflow as tf
 import emoji
 from googletrans import Translator
@@ -168,3 +169,39 @@ class SentimentModelService:
             "summary": stats,
             "total": len(results)
         }
+    
+    async def get_comment_stats(self, db: AsyncSession):
+        try:
+            # Total comments
+            total_query = await db.execute(
+                np.select(func.count(SentimentRecord.id))
+            )
+            total = total_query.scalar()
+
+            # Count per sentiment
+            sentiment_query = await db.execute(
+                select(
+                    SentimentRecord.sentiment_label,
+                    func.count(SentimentRecord.id)
+                ).group_by(SentimentRecord.sentiment_label)
+            )
+
+            sentiment_counts = {row[0]: row[1] for row in sentiment_query.all()}
+
+            return {
+                "total": total,
+                "positive": sentiment_counts.get("positive", 0),
+                "negative": sentiment_counts.get("negative", 0),
+                "neutral": sentiment_counts.get("neutral", 0),
+                "analysis_error": sentiment_counts.get("analysis_error", 0),
+            }
+
+        except Exception as e:
+            print(f"ERROR fetching stats: {e}")
+            return {
+                "total": 0,
+                "positive": 0,
+                "negative": 0,
+                "neutral": 0,
+                "analysis_error": 0,
+            }
