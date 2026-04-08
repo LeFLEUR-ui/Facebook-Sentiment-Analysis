@@ -70,7 +70,7 @@ Start the development server with hot-reload enabled. This will automatically re
 python -m uvicorn app.main:app --reload
 ```
 
-### ⚛️ Frontend Setup (React)
+### Frontend Setup (React)
 Navigate to the frontend directory to install dependencies and launch the development server:
 
 ```bash
