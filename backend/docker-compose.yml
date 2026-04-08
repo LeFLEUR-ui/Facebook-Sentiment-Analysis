@@ -1,13 +1,26 @@
 services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: passwordpo
+      POSTGRES_DB: sentiment
+    ports:
+      - "5433:5432"   # map host 5433 to container 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build: .
-    container_name: fastapi_backend
     ports:
       - "8000:8000"
     env_file:
       - .env
+    depends_on:
+      - db
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:passwordpo@db:5432/sentiment
-    volumes:
-      - .:/app
-    restart: always
+
+volumes:
+  postgres_data:
