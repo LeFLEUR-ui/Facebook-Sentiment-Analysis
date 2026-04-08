@@ -20,3 +20,13 @@ async def analyze_comments(payload: AnalysisRequest, db: AsyncSession = Depends(
     result = await sentiment_service.analyze_bulk_and_save(db, payload.raw_text)
     
     return result
+
+
+
+@router.get("/stats")
+async def get_comment_stats(db: AsyncSession = Depends(get_db)):
+    """
+    Returns total comments and sentiment breakdown.
+    """
+    stats = await sentiment_service.get_comment_stats(db)
+    return stats
