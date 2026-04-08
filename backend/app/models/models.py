@@ -14,14 +14,28 @@ class User(Base):
 
 
 class SentimentRecord(Base):
-    __tablename__ = "sentiment_records"  # table name
-    __table_args__ = {"schema": "public"}  # adjust schema if needed
+    __tablename__ = "sentiment_records"
+    __table_args__ = {"schema": "public"}
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, nullable=False)          # matches extracted name
-    comment_text = Column(String, nullable=False)      # matches extracted comment
-    sentiment_label = Column(String, nullable=False)   # "positive", "negative", "neutral", "analysis_error"
-    confidence_score = Column(Float, nullable=False)   # sentiment score 0.0 - 1.0
+    username = Column(String, nullable=False)
+    comment_text = Column(String, nullable=False)
+    sentiment_label = Column(String, nullable=False)
+    confidence_score = Column(Float, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.datetime.now(datetime.timezone.utc),
+        nullable=False
+    )
+
+class Post(Base):
+    __tablename__ = "posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(String, nullable=False)
+    reactions_count = Column(Integer, default=0)
+    comments_count = Column(Integer, default=0)
+    shares_count = Column(Integer, default=0)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.datetime.now(datetime.timezone.utc),
