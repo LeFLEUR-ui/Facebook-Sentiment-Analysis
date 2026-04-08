@@ -2,30 +2,21 @@ import React from 'react';
 import { FileText, ThumbsUp, MessageSquare, Share2 } from 'lucide-react';
 
 const Stats = () => {
+  const [stats, setStats] = React.useState(null);
+
+  React.useEffect(() => {
+    fetch("http://127.0.0.1:8000/ml/stats")
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(err => console.error("Failed to fetch stats:", err));
+  }, []);
+
   const statData = [
     { 
-      label: 'Total Posts', 
-      value: '62', 
-      icon: <FileText size={18} className="text-indigo-600" />,
-      trend: 'retrieved (FR-03)',
-    },
-    { 
-      label: 'Total Reactions', 
-      value: '20,473', 
-      icon: <ThumbsUp size={18} className="text-indigo-600" />,
-      trend: '+12% from last month',
-    },
-    { 
       label: 'Total Comments', 
-      value: '3,687', 
+      value: stats ? stats.total.toLocaleString() : '...', 
       icon: <MessageSquare size={18} className="text-indigo-600" />,
-      trend: 'Average 59 / post',
-    },
-    { 
-      label: 'Total Shares', 
-      value: '1,941', 
-      icon: <Share2 size={18} className="text-indigo-600" />,
-      trend: '9.4% engagement rate',
+      trend: stats ? `Positive: ${stats.positive}` : 'Loading...',
     },
   ];
 
