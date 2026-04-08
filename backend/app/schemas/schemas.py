@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
 
 
 class AnalysisRequest(BaseModel):
+    post_content: str
     raw_text: str = Field(..., description="The raw text pasted from the comment section")
 
 class SentimentResult(BaseModel):
