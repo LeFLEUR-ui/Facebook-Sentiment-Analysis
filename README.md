@@ -1,4 +1,4 @@
-# 📊 Facebook Sentiment Analysis Dashboard
+# Facebook Sentiment Analysis Dashboard
 
 An end-to-end Full-Stack application that scans Facebook comments and uses a **Deep Learning** backend to perform real-time sentiment analysis. Featuring a high-performance React dashboard with live-updating charts and a notification system.
 
@@ -32,3 +32,40 @@ sentiment-analysis/
 │   ├── src/                # Components & Hooks
 │   └── package.json        # NPM dependencies
 └── .env                    # Secret keys & DB URLs
+
+## Installation & Setup
+
+### 1. Backend Setup (FastAPI)
+Navigate to the backend directory and set up a virtual environment:
+
+```bash
+cd backend
+python -m venv venv
+
+# Activate the virtual environment
+# On Linux/macOS:
+source venv/bin/activate  
+# On Windows:
+venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+```
+
+### Environment Variables (.env)
+Create a file named `.env` in the `backend/` root directory and add the following configuration:
+
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/sentiment
+SECRET_KEY=your_secret_key_here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+```
+
+### Run Locally
+Start the development server with hot-reload enabled. This will automatically restart the server whenever you save changes to your code:
+
+```bash
+python -m uvicorn app.main:app --reload
+```
