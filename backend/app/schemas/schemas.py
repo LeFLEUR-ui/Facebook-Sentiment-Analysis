@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from typing import Dict, List
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserCreate(BaseModel):
@@ -17,3 +19,21 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AnalysisRequest(BaseModel):
+    raw_text: str = Field(..., description="The raw text pasted from the comment section")
+
+class SentimentResult(BaseModel):
+    name: str
+    comment: str
+    sentiment: str
+    score: float
+
+    class Config:
+        from_attributes = True
+
+class BulkAnalysisResponse(BaseModel):
+    results: List[SentimentResult]
+    summary: Dict[str, int]
+    total: int
