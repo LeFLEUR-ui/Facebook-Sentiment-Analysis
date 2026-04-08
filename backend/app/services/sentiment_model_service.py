@@ -172,29 +172,30 @@ class SentimentModelService:
     
     async def get_comment_stats(self, db: AsyncSession):
         try:
-            # Total comments
-            total_query = await db.execute(
-                np.select(func.count(SentimentRecord.id))
-            )
-            total = total_query.scalar()
+            total_stmt = select(func.count(SentimentRecord.id))
+            total_result = await db.execute(total_stmt)
+            total = total_result.scalar() or 0
 
-            # Count per sentiment
-            sentiment_query = await db.execute(
-                select(
-                    SentimentRecord.sentiment_label,
-                    func.count(SentimentRecord.id)
-                ).group_by(SentimentRecord.sentiment_label)
-            )
+            sentiment_stmt = select(
+                SentimentRecord.sentiment_label,
+                func.count(SentimentRecord.id)
+            ).group_by(SentimentRecord.sentiment_label)
+            
+            sentiment_result = await db.execute(sentiment_stmt)
 
-            sentiment_counts = {row[0]: row[1] for row in sentiment_query.all()}
-
-            return {
+            stats = {
                 "total": total,
-                "positive": sentiment_counts.get("positive", 0),
-                "negative": sentiment_counts.get("negative", 0),
-                "neutral": sentiment_counts.get("neutral", 0),
-                "analysis_error": sentiment_counts.get("analysis_error", 0),
+                "positive": 0,
+                "negative": 0,
+                "neutral": 0,
+                "analysis_error": 0,
             }
+
+            for label, count in sentiment_result.all():
+                if label in stats:
+                    stats[label] = count
+
+            return stats
 
         except Exception as e:
             print(f"ERROR fetching stats: {e}")
