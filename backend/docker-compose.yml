@@ -1,0 +1,15 @@
+services:
+  backend:
+    build: .
+    container_name: fastapi_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:passwordpo@db:5432/sentiment
+    volumes:
+      - .:/app
+    restart: always
+
+# Add your DB service here if needed
