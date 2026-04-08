@@ -13,13 +13,11 @@ sentiment_service = SentimentModelService()
 
 @router.post("/analyze", response_model=BulkAnalysisResponse)
 async def analyze_comments(payload: AnalysisRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Takes raw text, extracts comments, performs sentiment analysis, 
-    and saves results to the database.
-    """
-    result = await sentiment_service.analyze_bulk_and_save(db, payload.raw_text)
-    
-    return result
+    return await sentiment_service.analyze_bulk_and_save(
+        db, 
+        post_content=payload.post_content, 
+        raw_text=payload.raw_text
+    )
 
 
 
@@ -30,3 +28,9 @@ async def get_comment_stats(db: AsyncSession = Depends(get_db)):
     """
     stats = await sentiment_service.get_comment_stats(db)
     return stats
+
+
+@router.get("/trends")
+async def get_trends(db: AsyncSession = Depends(get_db)):
+    """Returns daily breakdown for the Growth Analysis Bar chart"""
+    return await sentiment_service.get_daily_trends(db)
