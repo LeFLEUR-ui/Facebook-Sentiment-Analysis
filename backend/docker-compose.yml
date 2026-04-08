@@ -11,5 +11,3 @@ services:
     volumes:
       - .:/app
     restart: always
-
-# Add your DB service here if needed
