@@ -10,4 +10,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:passwordpo@db:5432/sentiment
     volumes:
       - .:/app
+<<<<<<< HEAD
     restart: always
+=======
+    restart: always
+>>>>>>> 066196c (adding unit testing for api-controllers and all of them are PASSED)
