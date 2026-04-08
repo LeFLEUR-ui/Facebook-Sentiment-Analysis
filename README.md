@@ -69,3 +69,41 @@ Start the development server with hot-reload enabled. This will automatically re
 ```bash
 python -m uvicorn app.main:app --reload
 ```
+
+### ⚛️ Frontend Setup (React)
+Navigate to the frontend directory to install dependencies and launch the development server:
+
+```bash
+cd frontend
+# Install all required npm packages
+npm install
+# Start the React development server
+npm start
+```
+
+## Deployment (Render.com)
+
+### Backend (Docker Runtime)
+Since we are using Docker for the backend, Render will build the container automatically using our `Dockerfile`.
+
+1. **Runtime:** Select **Docker** from the runtime dropdown.
+2. **Instance Type:** Select at least the **Starter (2GB RAM)** instance. 
+   > **Important:** TensorFlow requires significant memory to load models; using the Free Tier (512MB) will likely result in an `Out of Memory (OOM)` error.
+3. **Environment Variables:** Navigate to the **Environment** tab in the Render Dashboard and manually add your `.env` keys:
+   - `DATABASE_URL`
+   - `SECRET_KEY`
+   - `ALGORITHM`
+   - `ACCESS_TOKEN_EXPIRE_MINUTES`
+
+---
+
+### Frontend (Static Site)
+Deploy the React dashboard as a high-performance static site.
+
+1. **Build Command:** `npm run build`
+2. **Publish Directory:** `build`
+3. **Environment Variables:** If your API URL is different in production, add `REACT_APP_API_URL` to point to your Render Backend URL.
+
+---
+
+**Note:** Ensure your Backend is deployed first so you can provide the correct API URL to your Frontend during its build process.
