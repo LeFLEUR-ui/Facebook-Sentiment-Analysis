@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import os
 import re
 import numpy as np
@@ -11,7 +12,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Embedding, LSTM, Dense
 
-from app.models.models import SentimentRecord
+from app.models.models import Post, SentimentRecord
 
 
 class SentimentModelService:
@@ -72,6 +73,7 @@ class SentimentModelService:
                 comment_lines = []
                 i += 1
 
+                # hirap ineng yernn, troublesome
                 while i < len(lines) and not re.match(TS_PAT, lines[i]) \
                     and lines[i] not in ["Reply", "Edited"] \
                     and not re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+", lines[i]):
@@ -112,39 +114,64 @@ class SentimentModelService:
         except Exception:
             return "analysis_error", 0.0
 
-    async def analyze_bulk_and_save(self, db: AsyncSession, raw_text: str):
-        extracted = self.extract_comments(raw_text)
-        print(f"DEBUG: Extracted {len(extracted)} comments")
-        print(f"DEBUG: Extracted content: {extracted}")
+    def _extract_post_header(self, raw_text: str):
+        """
+        Extracts the first meaningful paragraph to use as the 'Post' content.
+        """
+        lines = [line.strip() for line in raw_text.splitlines() if line.strip() and line.strip() != "·"]
+        if not lines:
+            return "Empty Post Content"
 
-        if not extracted:
-            print("WARNING: No comments extracted. Nothing to save.")
-            return {"results": [], "summary": {}, "total": 0}
+        header_lines = []
+        for line in lines[:3]:
+            if len(line) > 5:
+                header_lines.append(line)
+        
+        return " ".join(header_lines)[:500]
+
+    async def analyze_bulk_and_save(self, db: AsyncSession, post_content: str, raw_text: str):
+        """
+        Main Business Logic: 
+        1. Saves the parent Post.
+        2. Processes the child comments (SentimentRecords).
+        """
+
+        extracted = self.extract_comments(raw_text)
+        
+        new_post = Post(
+            content=post_content,
+            reactions_count=np.random.randint(5, 150),
+            comments_count=len(extracted),
+            shares_count=np.random.randint(0, 20),
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(new_post)
+
+        await db.flush()
 
         results = []
         stats = {"positive": 0, "negative": 0, "neutral": 0, "analysis_error": 0}
+
+        if not extracted:
+            await db.commit()
+            return {"results": [], "summary": stats, "total": 0}
 
         for name, comment in extracted:
             try:
                 sentiment, score = self.analyze_sentiment(comment)
                 stats[sentiment] += 1
-            except Exception as e:
-                print(f"ERROR: Sentiment analysis failed for '{comment}' by {name}: {e}")
+            except Exception:
                 sentiment, score = "analysis_error", 0.0
                 stats["analysis_error"] += 1
 
-            try:
-                db_record = SentimentRecord(
-                    username=name,
-                    comment_text=comment,
-                    sentiment_label=sentiment,
-                    confidence_score=score
-                )
-                db.add(db_record)
-                print(f"DEBUG: Added record to session for {name}")
-            except Exception as e:
-                print(f"ERROR: Failed to stage record for {name}: {e}")
-                continue
+            db_record = SentimentRecord(
+                username=name,
+                comment_text=comment,
+                sentiment_label=sentiment,
+                confidence_score=score,
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(db_record)
 
             results.append({
                 "name": name,
@@ -153,16 +180,13 @@ class SentimentModelService:
                 "score": score
             })
 
-        # Commit asynchronously, nginang hirap yan
         try:
             await db.commit()
-            print("DEBUG: Database commit succeeded!")
+            print(f"SUCCESS: Saved Post and {len(results)} comments.")
         except Exception as e:
             await db.rollback()
-            print(f"ERROR: Database commit failed: {e}")
-
-        print(f"DEBUG: Stats summary: {stats}")
-        print(f"DEBUG: Total results: {len(results)}")
+            print(f"DATABASE ERROR: {e}")
+            raise e
 
         return {
             "results": results,
@@ -206,3 +230,32 @@ class SentimentModelService:
                 "neutral": 0,
                 "analysis_error": 0,
             }
+        
+    async def get_daily_trends(self, db: AsyncSession):
+        try:
+            stmt = (
+                select(
+                    func.date(SentimentRecord.created_at).label("date"),
+                    SentimentRecord.sentiment_label,
+                    func.count(SentimentRecord.id).label("count")
+                )
+                .group_by("date", SentimentRecord.sentiment_label)
+                .order_by("date")
+            )
+            
+            result = await db.execute(stmt)
+            rows = result.all()
+
+            trends = {}
+            for date_obj, label, count in rows:
+                date_str = str(date_obj)
+                if date_str not in trends:
+                    trends[date_str] = {"positive": 0, "neutral": 0, "negative": 0}
+                
+                if label in trends[date_str]:
+                    trends[date_str][label] = count
+
+            return trends
+        except Exception as e:
+            print(f"ERROR fetching trends: {e}")
+            return {}
