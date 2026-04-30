@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from unittest.mock import AsyncMock, patch
 from app.main import app
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_all_posts_success():
     """Test successful retrieval of all posts"""
     mock_posts = [
@@ -32,7 +32,7 @@ async def test_get_all_posts_success():
         assert response.json()[0]["fb_post_id"] == "12345"
         mock_get.assert_called_once()
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_posts_empty_list():
     """Test response when no posts exist in the database"""
     with patch("app.controllers.post_controller.post_service.get_all_posts", new_callable=AsyncMock) as mock_get:

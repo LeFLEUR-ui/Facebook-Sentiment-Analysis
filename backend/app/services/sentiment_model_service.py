@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional, List
 import os
 import re
 import numpy as np
@@ -13,7 +14,6 @@ from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Embedding, LSTM, Dense
 
 from app.models.models import Post, SentimentRecord
-
 
 class SentimentModelService:
     def __init__(self):
@@ -52,31 +52,30 @@ class SentimentModelService:
         return word_index
 
     def extract_comments(self, text: str):
-        """
-        Extract (username, comment) pairs from raw Facebook-like text.
-        Handles multiline comments, timestamps (1d, 2h, etc.), 'Reply', 'Edited', and empty lines.
-        """
         TS_PAT = r"^\d+[hdmy]$"
+        NOISE = ["Reply", "Edited", "Share", "Like", "React", "View more", "See translation"]
+        
         lines = [line.strip() for line in text.splitlines() if line.strip() and line.strip() != "·"]
-
         results = []
         i = 0
         while i < len(lines):
             line = lines[i]
-
-            if re.match(TS_PAT, line) or line in ["Reply", "Edited"]:
+            if re.match(TS_PAT, line) or line in NOISE:
                 i += 1
                 continue
 
-            if i + 1 < len(lines) and not re.match(TS_PAT, lines[i + 1]) and lines[i + 1] not in ["Reply", "Edited"]:
+            if i + 1 < len(lines):
                 name = line
                 comment_lines = []
                 i += 1
-
-                # hirap ineng yernn, troublesome
-                while i < len(lines) and not re.match(TS_PAT, lines[i]) \
-                    and lines[i] not in ["Reply", "Edited"] \
-                    and not re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+", lines[i]):
+                while i < len(lines) and not re.match(TS_PAT, lines[i]) and lines[i] not in NOISE:
+                    if re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+$", lines[i]) and comment_lines:
+                        if i + 1 < len(lines) and (re.match(TS_PAT, lines[i+1]) or lines[i+1] in NOISE):
+                            break
+                        if any(p in lines[i].lower() for p in ["congrats", "congratulations", "good job", "well done"]):
+                            pass
+                        else:
+                             break
                     comment_lines.append(lines[i])
                     i += 1
 
@@ -85,14 +84,12 @@ class SentimentModelService:
                     results.append((name, comment_text))
             else:
                 i += 1
-
-        print(f"DEBUG: Final extracted comments: {results}")
         return results
 
     def _encode_comment(self, text: str):
         clean_text = re.sub(r'[^\w\s]', ' ', text.lower())
         tokens = clean_text.split()
-        encoded = [1]
+        encoded = [1] # Start token
         for word in tokens:
             idx = self.word_index.get(word, 2)
             encoded.append(idx if idx < self.VOCAB_SIZE else 2)
@@ -100,76 +97,90 @@ class SentimentModelService:
 
     def analyze_sentiment(self, text: str):
         try:
-            text = emoji.demojize(text, delimiters=(" ", " ")).replace("_", " ")
-            translated = self.translator.translate(text, src='tl', dest='en').text
-            
-            encoded = self._encode_comment(translated)
-            score = self.model.predict(encoded, verbose=0)[0][0]
+            # Expanded keyword lists
+            POSITIVE_KEYS = ["congrats", "congratulations", "proud", "galing", "lodi", "idol", "good", "great", "best", "amazing", "wow", "happy", "love", "dasurv", "deserve", "panalo", "nice", "keep it up", "suwerte", "blessed"]
+            NEGATIVE_KEYS = ["bad", "worst", "fail", "sad", "disappoint", "mali", "panget", "galit", "bulok", "talo", "sayang", "tambak", "corny", "fake"]
 
-            if score >= 0.58:
-                return "positive", float(round(score, 4))
-            elif score <= 0.42:
-                return "negative", float(round(score, 4))
-            return "neutral", float(round(score, 4))
-        except Exception:
+            text_lower = text.lower()
+            
+            # 1. Manual keyword boost (Increased weight)
+            boost = 0.0
+            for k in POSITIVE_KEYS:
+                if k in text_lower: boost += 0.30
+            for k in NEGATIVE_KEYS:
+                if k in text_lower: boost -= 0.30
+
+            # 2. Translation & Cleaning
+            text_cleaned = emoji.demojize(text, delimiters=(" ", " ")).replace("_", " ")
+            try:
+                translated_obj = self.translator.translate(text_cleaned, dest='en')
+                translated = translated_obj.text
+            except Exception as e:
+                # If translation fails, use cleaned original text
+                translated = text_cleaned
+            
+            # 3. Model Prediction
+            encoded = self._encode_comment(translated)
+            raw_score = float(self.model.predict(encoded, verbose=0)[0][0])
+
+            # Apply boost and clamp between 0 and 1
+            final_score = max(0.0, min(1.0, raw_score + boost))
+
+            # DEBUG LOGGING: Check your console to see why a comment got its label
+            print(f"DEBUG | Text: {text[:30]}... | Raw: {raw_score:.2f} | Boost: {boost:.2f} | Final: {final_score:.2f}")
+
+            # 4. Refined Thresholds
+            # Widened neutral zone to prevent "uncertain" model scores from defaulting to negative
+            if final_score >= 0.65:
+                return "positive", float(round(final_score, 4))
+            elif final_score <= 0.35:
+                return "negative", float(round(final_score, 4))
+            else:
+                return "neutral", float(round(final_score, 4))
+
+        except Exception as e:
+            print(f"SENTIMENT ERROR: {e}")
             return "analysis_error", 0.0
 
-    def _extract_post_header(self, raw_text: str):
-        """
-        Extracts the first meaningful paragraph to use as the 'Post' content.
-        """
-        lines = [line.strip() for line in raw_text.splitlines() if line.strip() and line.strip() != "·"]
-        if not lines:
-            return "Empty Post Content"
-
-        header_lines = []
-        for line in lines[:3]:
-            if len(line) > 5:
-                header_lines.append(line)
-        
-        return " ".join(header_lines)[:500]
-
-    async def analyze_bulk_and_save(self, db: AsyncSession, post_content: str, raw_text: str):
-        """
-        Main Business Logic: 
-        1. Saves the parent Post.
-        2. Processes the child comments (SentimentRecords).
-        """
-
+    async def analyze_bulk_and_save(self, db: AsyncSession, post_content: str, raw_text: str, scan_date: Optional[str] = None):
         extracted = self.extract_comments(raw_text)
         
+        # Use provided scan_date or current time
+        if scan_date:
+            try:
+                created_at = datetime.strptime(scan_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                # Set time to current time but keep the date
+                now = datetime.now(timezone.utc)
+                created_at = created_at.replace(hour=now.hour, minute=now.minute, second=now.second)
+            except ValueError:
+                created_at = datetime.now(timezone.utc)
+        else:
+            created_at = datetime.now(timezone.utc)
+
         new_post = Post(
             content=post_content,
             reactions_count=np.random.randint(5, 150),
             comments_count=len(extracted),
             shares_count=np.random.randint(0, 20),
-            created_at=datetime.now(timezone.utc)
+            created_at=created_at
         )
         db.add(new_post)
-
         await db.flush()
 
         results = []
         stats = {"positive": 0, "negative": 0, "neutral": 0, "analysis_error": 0}
 
-        if not extracted:
-            await db.commit()
-            return {"results": [], "summary": stats, "total": 0}
-
         for name, comment in extracted:
-            try:
-                sentiment, score = self.analyze_sentiment(comment)
-                stats[sentiment] += 1
-            except Exception:
-                sentiment, score = "analysis_error", 0.0
-                stats["analysis_error"] += 1
+            sentiment, score = self.analyze_sentiment(comment)
+            stats[sentiment] += 1
 
             db_record = SentimentRecord(
+                post_id=new_post.id,
                 username=name,
                 comment_text=comment,
                 sentiment_label=sentiment,
                 confidence_score=score,
-                created_at=datetime.now(timezone.utc)
+                created_at=created_at
             )
             db.add(db_record)
 
@@ -180,31 +191,34 @@ class SentimentModelService:
                 "score": score
             })
 
-        try:
-            await db.commit()
-            print(f"SUCCESS: Saved Post and {len(results)} comments.")
-        except Exception as e:
-            await db.rollback()
-            print(f"DATABASE ERROR: {e}")
-            raise e
-
-        return {
-            "results": results,
-            "summary": stats,
-            "total": len(results)
-        }
+        await db.commit()
+        return {"results": results, "summary": stats, "total": len(results)}
     
-    async def get_comment_stats(self, db: AsyncSession):
+    async def get_comment_stats(self, db: AsyncSession, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, search: Optional[str] = None):
         try:
             total_stmt = select(func.count(SentimentRecord.id))
-            total_result = await db.execute(total_stmt)
-            total = total_result.scalar() or 0
-
             sentiment_stmt = select(
                 SentimentRecord.sentiment_label,
                 func.count(SentimentRecord.id)
             ).group_by(SentimentRecord.sentiment_label)
-            
+
+            if start_date and end_date:
+                total_stmt = total_stmt.where(SentimentRecord.created_at.between(start_date, end_date))
+                sentiment_stmt = sentiment_stmt.where(SentimentRecord.created_at.between(start_date, end_date))
+            elif start_date:
+                total_stmt = total_stmt.where(SentimentRecord.created_at >= start_date)
+                sentiment_stmt = sentiment_stmt.where(SentimentRecord.created_at >= start_date)
+            elif end_date:
+                total_stmt = total_stmt.where(SentimentRecord.created_at <= end_date)
+                sentiment_stmt = sentiment_stmt.where(SentimentRecord.created_at <= end_date)
+
+            if search:
+                total_stmt = total_stmt.join(Post, SentimentRecord.post_id == Post.id).where(Post.content.ilike(f"%{search}%"))
+                sentiment_stmt = sentiment_stmt.join(Post, SentimentRecord.post_id == Post.id).where(Post.content.ilike(f"%{search}%"))
+
+            total_result = await db.execute(total_stmt)
+            total = total_result.scalar() or 0
+
             sentiment_result = await db.execute(sentiment_stmt)
 
             stats = {
@@ -231,7 +245,7 @@ class SentimentModelService:
                 "analysis_error": 0,
             }
         
-    async def get_daily_trends(self, db: AsyncSession):
+    async def get_daily_trends(self, db: AsyncSession, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, search: Optional[str] = None):
         try:
             stmt = (
                 select(
@@ -239,9 +253,19 @@ class SentimentModelService:
                     SentimentRecord.sentiment_label,
                     func.count(SentimentRecord.id).label("count")
                 )
-                .group_by("date", SentimentRecord.sentiment_label)
-                .order_by("date")
             )
+
+            if start_date and end_date:
+                stmt = stmt.where(SentimentRecord.created_at.between(start_date, end_date))
+            elif start_date:
+                stmt = stmt.where(SentimentRecord.created_at >= start_date)
+            elif end_date:
+                stmt = stmt.where(SentimentRecord.created_at <= end_date)
+
+            if search:
+                stmt = stmt.join(Post, SentimentRecord.post_id == Post.id).where(Post.content.ilike(f"%{search}%"))
+
+            stmt = stmt.group_by("date", SentimentRecord.sentiment_label).order_by("date")
             
             result = await db.execute(stmt)
             rows = result.all()

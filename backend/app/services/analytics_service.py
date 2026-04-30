@@ -1,10 +1,11 @@
+from typing import Optional
 from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.models import SentimentRecord, Post
 from datetime import datetime
 
 class AnalyticsService:
-    async def get_dashboard_stats(self, db: AsyncSession, start_date: datetime, end_date: datetime):
+    async def get_dashboard_stats(self, db: AsyncSession, start_date: datetime, end_date: datetime, search: Optional[str] = None):
 
         stmt = (
             select(
@@ -15,9 +16,13 @@ class AnalyticsService:
                 func.count(SentimentRecord.id).filter(SentimentRecord.sentiment_label == 'neutral').label("neu")
             )
             .where(SentimentRecord.created_at.between(start_date, end_date))
-            .group_by("date")
-            .order_by("date")
         )
+
+        if search:
+            stmt = stmt.join(Post, SentimentRecord.post_id == Post.id)
+            stmt = stmt.where(Post.content.ilike(f"%{search}%"))
+
+        stmt = stmt.group_by("date").order_by("date")
         
         result = await db.execute(stmt)
         rows = result.all()

@@ -8,6 +8,7 @@ const Scan = () => {
   const [commentsText, setCommentsText] = useState("");
   const [analysisData, setAnalysisData] = useState(null);
   const [error, setError] = useState(null);
+  const [scanDate, setScanDate] = useState(new Date().toISOString().split('T')[0]);
 
   const resultConfig = {
     positive: {
@@ -49,12 +50,13 @@ const Scan = () => {
     setError(null);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/ml/analyze", {
+      const response = await fetch("http://localhost:8000/ml/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           post_content: postContent,
-          raw_text: commentsText 
+          raw_text: commentsText,
+          scan_date: scanDate
         }),
       });
 
@@ -123,6 +125,19 @@ const Scan = () => {
               onChange={(e) => setCommentsText(e.target.value)}
               placeholder="Paste raw comments here (Name, Comment, Timestamp format)..."
               className="w-full h-48 px-5 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all text-sm font-medium resize-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-wider">
+              <ScanLine size={16} className="text-blue-500" />
+              3. Scan Date (Attribution)
+            </label>
+            <input
+              type="date"
+              value={scanDate}
+              onChange={(e) => setScanDate(e.target.value)}
+              className="w-full px-5 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm font-medium"
             />
           </div>
         </div>

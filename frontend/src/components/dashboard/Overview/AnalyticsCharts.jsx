@@ -22,7 +22,7 @@ ChartJS.register(
   Filler
 );
 
-const AnalyticsCharts = () => {
+const AnalyticsCharts = ({ startDate, endDate, searchTerm }) => {
   const [stats, setStats] = useState({
     total: 0,
     positive: 0,
@@ -37,7 +37,7 @@ const AnalyticsCharts = () => {
     const fetchAnalytics = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('http://localhost:8000/ml/stats');
+        const response = await fetch(`http://localhost:8000/ml/stats?start_date=${startDate}&end_date=${endDate}&search=${searchTerm}`);
         
         if (!response.ok) throw new Error('Failed to fetch stats');
         
@@ -52,7 +52,7 @@ const AnalyticsCharts = () => {
     };
 
     fetchAnalytics();
-  }, []);
+  }, [startDate, endDate, searchTerm]);
 
   const positivePct = useMemo(() => 
     stats.total > 0 ? Math.round((stats.positive / stats.total) * 100) : 0

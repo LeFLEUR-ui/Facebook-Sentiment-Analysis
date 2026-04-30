@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
 class AnalysisRequest(BaseModel):
     post_content: str
     raw_text: str = Field(..., description="The raw text pasted from the comment section")
+    scan_date: str = Field(None, description="Optional date for the scan (YYYY-MM-DD)")
 
 class SentimentResult(BaseModel):
     name: str

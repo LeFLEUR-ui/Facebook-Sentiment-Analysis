@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from unittest.mock import AsyncMock, patch
 from app.main import app
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_export_csv_success():
     """Test successful CSV generation and download headers"""
     mock_csv_content = "id,sentiment,content\n1,positive,great post\n2,negative,bad post"
@@ -21,7 +21,7 @@ async def test_export_csv_success():
         assert response.text == mock_csv_content
         mock_gen.assert_called_once()
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_export_pdf_success():
     """Test successful PDF generation and inline headers"""
     mock_pdf_content = b"%PDF-1.4 mock pdf data"
@@ -38,7 +38,7 @@ async def test_export_pdf_success():
         assert response.content == mock_pdf_content
         mock_gen.assert_called_once()
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_export_pdf_failure():
     """Test behavior when PDF generation returns None"""
     with patch("app.controllers.report_controller.report_service.generate_pdf", new_callable=AsyncMock) as mock_gen:

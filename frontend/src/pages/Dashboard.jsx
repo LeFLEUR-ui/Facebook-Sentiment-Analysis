@@ -33,8 +33,11 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [searchTerm, setSearchTerm] = useState('');
   
-  const [startDate, setStartDate] = useState('2026-03-05');
-  const [endDate, setEndDate] = useState('2026-04-08');
+  const today = new Date().toISOString().split('T')[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  const [startDate, setStartDate] = useState(thirtyDaysAgo);
+  const [endDate, setEndDate] = useState(today);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +52,7 @@ const Dashboard = () => {
     setLoading(true);
     try {
       const response = await fetch(
-  `http://localhost:8000/analytics/dashboard?start_date=${startDate}&end_date=${endDate}`
+  `http://localhost:8000/analytics/dashboard?start_date=${startDate}&end_date=${endDate}&search=${searchTerm}`
 );
       const data = await response.json();
       setAnalytics(data);
@@ -58,7 +61,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, searchTerm]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -115,18 +118,18 @@ const Dashboard = () => {
       case 'Overview':
         return (
           <div className="space-y-8 transition-all duration-500 animate-fadeIn">
-            <Stats />
-            <AnalyticsCharts reactionBarData={reactionBarData} reactionPieData={reactionPieData} sentimentData={sentimentData} commonOptions={commonOptions} />
-            <Engagement timelineData={timelineData} cumulativeData={cumulativeData} commonOptions={commonOptions} />
+            <Stats startDate={startDate} endDate={endDate} searchTerm={searchTerm} />
+            <AnalyticsCharts startDate={startDate} endDate={endDate} searchTerm={searchTerm} reactionBarData={reactionBarData} reactionPieData={reactionPieData} sentimentData={sentimentData} commonOptions={commonOptions} />
+            <Engagement startDate={startDate} endDate={endDate} searchTerm={searchTerm} timelineData={timelineData} cumulativeData={cumulativeData} commonOptions={commonOptions} />
           </div>
         );
       case 'Sentiment':
-        return <AnalyticsCharts reactionBarData={reactionBarData} reactionPieData={reactionPieData} sentimentData={sentimentData} commonOptions={commonOptions} />;
+        return <AnalyticsCharts startDate={startDate} endDate={endDate} searchTerm={searchTerm} reactionBarData={reactionBarData} reactionPieData={reactionPieData} sentimentData={sentimentData} commonOptions={commonOptions} />;
       case 'Trends':
-        return <Engagement timelineData={timelineData} cumulativeData={cumulativeData} commonOptions={commonOptions} />;
-      case 'Posts & Metrics': return <PostsMetrics />;
+        return <Engagement startDate={startDate} endDate={endDate} searchTerm={searchTerm} timelineData={timelineData} cumulativeData={cumulativeData} commonOptions={commonOptions} />;
+      case 'Posts & Metrics': return <PostsMetrics startDate={startDate} endDate={endDate} searchTerm={searchTerm} />;
       case 'Insights': return <Insights />;
-      case 'Reports': return <Reports />;
+      case 'Reports': return <Reports startDate={startDate} endDate={endDate} searchTerm={searchTerm} />;
       case 'Scan': return <Scan />;
       default: return null;
     }

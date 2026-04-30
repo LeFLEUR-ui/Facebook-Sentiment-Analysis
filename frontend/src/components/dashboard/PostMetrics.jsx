@@ -1,17 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, ThumbsUp, MessageSquare, Share2, FileText, Loader2, RefreshCw } from 'lucide-react';
 
-const PostsMetrics = () => {
+const PostsMetrics = ({ startDate, endDate, searchTerm }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const filteredPosts = React.useMemo(() => {
+    if (!searchTerm) return posts;
+    return posts.filter(post => 
+      post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [posts, searchTerm]);
 
   const fetchPosts = useCallback(async (showFullLoader = false) => {
     if (showFullLoader) setLoading(true);
     else setIsRefreshing(true);
 
     try {
-      const response = await fetch('http://localhost:8000/posts/');
+      const response = await fetch(`http://localhost:8000/posts/?start_date=${startDate}&end_date=${endDate}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setPosts(data);
@@ -21,7 +29,7 @@ const PostsMetrics = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     fetchPosts(true);
@@ -48,7 +56,7 @@ const PostsMetrics = () => {
             </button>
           </div>
           <p className="text-indigo-100 max-w-2xl mt-2 opacity-90">
-            Analyzing '{posts.length}' individual Facebook posts. Track engagement velocity and content performance at a glance.
+            Analyzing '{filteredPosts.length}' individual Facebook posts. Track engagement velocity and content performance at a glance.
           </p>
         </div>
         <div className="absolute -top-12 -right-12 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
@@ -75,8 +83,8 @@ const PostsMetrics = () => {
               <Loader2 className="animate-spin mb-4 text-indigo-600" size={40} />
               <p className="text-sm font-semibold tracking-wide uppercase">Syncing with Meta API...</p>
             </div>
-          ) : posts.length > 0 ? (
-            posts.map((post) => (
+          ) : filteredPosts.length > 0 ? (
+            filteredPosts.map((post) => (
               <div
                 key={post.id}
                 className="group border border-gray-100 rounded-3xl p-6 hover:bg-slate-50/50 hover:border-indigo-100 transition-all duration-300"

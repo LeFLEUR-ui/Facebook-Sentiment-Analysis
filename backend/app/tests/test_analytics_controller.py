@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 from datetime import datetime
 from app.main import app
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_dashboard_data_success():
     """Test successful retrieval of dashboard stats with query params"""
     mock_stats = {
@@ -26,7 +26,7 @@ async def test_get_dashboard_data_success():
         assert response.json() == mock_stats
         mock_get.assert_called_once()
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_dashboard_data_missing_params():
     """Test validation error when query parameters are missing"""
     async with AsyncClient(app=app, base_url="http://test") as ac:
@@ -34,7 +34,7 @@ async def test_get_dashboard_data_missing_params():
     
     assert response.status_code == 422
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_notifications_success():
     """Test successful retrieval of recent notifications"""
     mock_notifications = [
@@ -53,7 +53,7 @@ async def test_get_notifications_success():
         assert response.json()[0]["title"] == "New negative comment"
         mock_get.assert_called_once()
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_dashboard_data_invalid_date_format():
     """Test error handling for incorrect date strings"""
     async with AsyncClient(app=app, base_url="http://test") as ac:
@@ -62,4 +62,4 @@ async def test_get_dashboard_data_invalid_date_format():
             params={"start_date": "invalid-date", "end_date": "2026-04-04"}
         )
     
-    assert response.status_code == 500
+    assert response.status_code == 400

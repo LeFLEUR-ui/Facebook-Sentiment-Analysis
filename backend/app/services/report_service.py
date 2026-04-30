@@ -1,20 +1,33 @@
 import io
 import pandas as pd
 from datetime import datetime
+from typing import Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from xhtml2pdf import pisa
 from app.models.models import SentimentRecord
 
 class ReportService:
-    async def get_report_data(self, db: AsyncSession):
+    async def get_report_data(self, db: AsyncSession, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, search: Optional[str] = None):
         """Helper to fetch all records for reports"""
-        stmt = select(SentimentRecord).order_by(SentimentRecord.created_at.desc())
+        stmt = select(SentimentRecord)
+        
+        if start_date and end_date:
+            stmt = stmt.where(SentimentRecord.created_at.between(start_date, end_date))
+        elif start_date:
+            stmt = stmt.where(SentimentRecord.created_at >= start_date)
+        elif end_date:
+            stmt = stmt.where(SentimentRecord.created_at <= end_date)
+            
+        if search:
+            stmt = stmt.join(Post, SentimentRecord.post_id == Post.id).where(Post.content.ilike(f"%{search}%"))
+
+        stmt = stmt.order_by(SentimentRecord.created_at.desc())
         result = await db.execute(stmt)
         return result.scalars().all()
 
-    async def generate_csv(self, db: AsyncSession):
-        records = await self.get_report_data(db)
+    async def generate_csv(self, db: AsyncSession, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, search: Optional[str] = None):
+        records = await self.get_report_data(db, start_date=start_date, end_date=end_date, search=search)
         
         data = [
             {
@@ -33,8 +46,8 @@ class ReportService:
         df.to_csv(stream, index=False)
         return stream.getvalue()
 
-    async def generate_pdf(self, db: AsyncSession):
-        records = await self.get_report_data(db)
+    async def generate_pdf(self, db: AsyncSession, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, search: Optional[str] = None):
+        records = await self.get_report_data(db, start_date=start_date, end_date=end_date, search=search)
         
         total = len(records)
         pos = sum(1 for r in records if r.sentiment_label == "positive")

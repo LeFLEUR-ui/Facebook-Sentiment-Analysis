@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Download, Printer, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 
-const Reports = () => {
+const Reports = ({ startDate, endDate, searchTerm }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const reportItems = [
@@ -13,11 +13,11 @@ const Reports = () => {
   ];
 
   const handleExportCSV = () => {
-    window.location.href = 'http://localhost:8000/reports/export-csv';
+    window.location.href = `http://localhost:8000/reports/export-csv?start_date=${startDate}&end_date=${endDate}&search=${searchTerm}`;
   };
 
   const handleViewPDF = () => {
-    window.open('http://localhost:8000/reports/export-pdf', '_blank');
+    window.open(`http://localhost:8000/reports/export-pdf?start_date=${startDate}&end_date=${endDate}&search=${searchTerm}`, '_blank');
   };
 
   const handleRefreshData = async () => {

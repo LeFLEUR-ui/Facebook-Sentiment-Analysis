@@ -1,15 +1,16 @@
 import React from 'react';
 import { FileText, ThumbsUp, MessageSquare, Share2 } from 'lucide-react';
 
-const Stats = () => {
+const Stats = ({ startDate, endDate, searchTerm }) => {
   const [stats, setStats] = React.useState(null);
 
   React.useEffect(() => {
-    fetch("http://127.0.0.1:8000/ml/stats")
+    setStats(null); // Trigger loading state
+    fetch(`http://localhost:8000/ml/stats?start_date=${startDate}&end_date=${endDate}&search=${searchTerm}`)
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error("Failed to fetch stats:", err));
-  }, []);
+  }, [startDate, endDate, searchTerm]);
 
   const statData = [
     { 

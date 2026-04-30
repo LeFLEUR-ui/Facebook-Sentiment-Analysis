@@ -22,7 +22,7 @@ ChartJS.register(
   Filler
 );
 
-const Engagement = () => {
+const Engagement = ({ startDate, endDate, searchTerm }) => {
   const [stats, setStats] = useState({ positive: 0, neutral: 0, negative: 0, total: 0 });
   const [trends, setTrends] = useState({});
   const [loading, setLoading] = useState(true);
@@ -31,8 +31,8 @@ const Engagement = () => {
     const fetchData = async () => {
       try {
         const [sRes, tRes] = await Promise.all([
-          fetch('http://localhost:8000/ml/stats'),
-          fetch('http://localhost:8000/ml/trends')
+          fetch(`http://localhost:8000/ml/stats?start_date=${startDate}&end_date=${endDate}&search=${searchTerm}`),
+          fetch(`http://localhost:8000/ml/trends?start_date=${startDate}&end_date=${endDate}&search=${searchTerm}`)
         ]);
         const sData = await sRes.json();
         const tData = await tRes.json();
@@ -45,7 +45,7 @@ const Engagement = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [startDate, endDate, searchTerm]);
 
   const colors = {
     positive: { stroke: '#10b981', fill: 'rgba(16, 185, 129, 0.08)' },

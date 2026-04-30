@@ -19,7 +19,7 @@ app = FastAPI(title="SMART GENERATIONS PH - FACEBOOK SENTIMENT ANALYSIS")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+        allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,12 +42,3 @@ async def read_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
     users = result.scalars().all()
     return users
-
-
-# And I'll always love you
-# Deep inside this heart of mine
-# I do love you
-# And I'll always need you
-# And if you ever
-# Change your mind, I'll still
-# I will love you 🎶

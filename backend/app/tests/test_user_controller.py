@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 from app.main import app
 from app.schemas.schemas import UserResponse
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 class TestAuthController:
 
     @patch("app.controllers.user_controller.get_user_by_email", new_callable=AsyncMock)
